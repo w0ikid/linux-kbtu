@@ -1,0 +1,32 @@
+- name: Add Caddy signing key
+  ansible.builtin.shell: >
+    curl -fsSL https://dl.cloudsmith.io/public/caddy/stable/gpg.key
+    | gpg --dearmor -o /etc/apt/keyrings/caddy-stable.gpg
+  args:
+    creates: /etc/apt/keyrings/caddy-stable.gpg
+
+- name: Add Caddy apt repo
+  ansible.builtin.apt_repository:
+    repo: "deb [signed-by=/etc/apt/keyrings/caddy-stable.gpg] https://dl.cloudsmith.io/public/caddy/stable/deb/debian any-version main"
+    filename: caddy-stable
+
+- name: Install Caddy
+  ansible.builtin.apt:
+    name: caddy
+
+- name: Caddyfile
+  ansible.builtin.template:
+    src: Caddyfile.j2
+    dest: /etc/caddy/Caddyfile
+    mode: "0644"
+    validate: caddy validate --adapter caddyfile --config %s
+  notify: Reload caddy
+
+- name: Caddy enabled and started
+  ansible.builtin.systemd:
+    name: caddy
+    enabled: true
+    state: started
+
+- name: Apply pending reloads now
+  ansible.builtin.meta: flush_handlers

@@ -1,0 +1,9 @@
+# On directories with ACLs the group bits are the ACL mask, so they must
+# allow what the ACL grants (rwx), otherwise a re-run would mask the ACL.
+fs_layout:
+  - { path: /opt/vikunja, owner: "{{ app_user }}", group: "{{ app_group }}", mode: "0775" }
+  - { path: /etc/vikunja, owner: root, group: "{{ app_group }}", mode: "0750" }
+  - { path: /var/lib/vikunja, owner: "{{ app_user }}", group: "{{ app_group }}", mode: "0750" }
+  - { path: /var/lib/vikunja/files, owner: "{{ app_user }}", group: "{{ app_group }}", mode: "0750" }
+  - { path: /var/log/vikunja, owner: "{{ app_user }}", group: adm, mode: "0750" }
+  - { path: /var/backups/vikunja, owner: root, group: root, mode: "0770" }

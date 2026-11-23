@@ -1,0 +1,50 @@
+# Full setup of a Vikunja host from a plain Ubuntu 22.04 image (SIS1-3),
+# followed by smoke tests for every role.
+- name: Setup Vikunja host
+  hosts: vikunja
+  become: true
+  roles:
+    - base          # SIS3: packages (apt, new apt repo, static binary)
+    - docker        # runtime for the application
+    - filesystem    # SIS1: service account and directory layout
+    - users         # SIS2: role groups and users
+    - permissions   # SIS2: ACLs and sudoers
+    - ssh           # SIS2: automation key, sshd hardening
+    - vikunja       # SIS2: compose stack under systemd
+    - caddy         # SIS3: reverse proxy with TLS
+    - firewall      # SIS3: ufw, SSH first
+    - network       # SIS3: network map
+
+- name: Smoke tests on host
+  hosts: vikunja
+  become: true
+  gather_facts: false
+  tags: [test]
+  tasks:
+    - name: Run smoke tests of every role
+      ansible.builtin.include_role:
+        name: "{{ item }}"
+        tasks_from: test
+      loop: [base, docker, filesystem, users, permissions, ssh, vikunja, caddy, firewall, network]
+
+- name: Smoke tests over the network
+  hosts: vikunja
+  gather_facts: false
+  tags: [test]
+  tasks:
+    - name: Public ports answer from control node
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: "{{ item }}"
+        timeout: 10
+      loop: "{{ firewall_ports }}"
+      delegate_to: localhost
+
+    - name: Internal ports are closed from outside
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: "{{ item }}"
+        state: stopped
+        timeout: 5
+      loop: [3456, 5432, 2019]
+      delegate_to: localhost

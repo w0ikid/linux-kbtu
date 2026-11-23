@@ -1,0 +1,32 @@
+services:
+  vikunja:
+    image: {{ vikunja_image }}
+    container_name: vikunja
+    user: "{{ app_uid }}:{{ app_gid }}"
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3456:3456"
+    env_file: /etc/vikunja/app.env
+    volumes:
+      - /var/lib/vikunja/files:/app/vikunja/files
+    restart: unless-stopped
+
+  db:
+    image: {{ postgres_image }}
+    container_name: vikunja-db
+    environment:
+      POSTGRES_USER: vikunja
+      POSTGRES_PASSWORD: "{{ vikunja_db_password }}"
+      POSTGRES_DB: vikunja
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vikunja"]
+      interval: 10s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:

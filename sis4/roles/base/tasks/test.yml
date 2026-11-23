@@ -1,0 +1,4 @@
+- name: "[base] binaries run"
+  ansible.builtin.command: "{{ item }}"
+  loop: ["htop --version", "gh --version", "yq --version"]
+  changed_when: false

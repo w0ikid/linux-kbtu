@@ -1,0 +1,7 @@
+- name: "[docker] daemon answers"
+  ansible.builtin.command: docker info --format '{{ "{{" }}.ServerVersion{{ "}}" }}'
+  changed_when: false
+
+- name: "[docker] compose plugin present"
+  ansible.builtin.command: docker compose version
+  changed_when: false

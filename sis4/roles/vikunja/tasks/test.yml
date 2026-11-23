@@ -1,0 +1,30 @@
+- name: "[vikunja] unit enabled and active"
+  ansible.builtin.command: systemctl is-{{ item }} vikunja
+  loop: [enabled, active]
+  changed_when: false
+
+- name: "[vikunja] containers running"
+  ansible.builtin.command: docker inspect -f '{{ "{{" }}.State.Status{{ "}}" }}' {{ item }}
+  loop: [vikunja, vikunja-db]
+  register: ct
+  changed_when: false
+  failed_when: ct.stdout != 'running'
+
+- name: "[vikunja] app container runs as service account"
+  ansible.builtin.command: docker inspect -f '{{ "{{" }}.Config.User{{ "}}" }}' vikunja
+  register: ct_user
+  changed_when: false
+  failed_when: ct_user.stdout.split(':')[0] == '0' or ct_user.stdout == ''
+
+- name: "[vikunja] API answers on localhost"
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3456/api/v1/info
+    return_content: true
+  register: info
+  retries: 12
+  delay: 5
+  until: info.status == 200
+
+- name: "[vikunja] version"
+  ansible.builtin.debug:
+    msg: "Vikunja {{ info.json.version }}"

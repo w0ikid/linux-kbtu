@@ -1,0 +1,10 @@
+- name: "[network] default route and DNS work"
+  ansible.builtin.command: "{{ item }}"
+  loop: ["ip route show default", "getent hosts github.com"]
+  changed_when: false
+
+- name: "[network] map saved"
+  ansible.builtin.stat:
+    path: /var/log/network-map.txt
+  register: nm
+  failed_when: not nm.stat.exists or nm.stat.size == 0

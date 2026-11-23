@@ -1,0 +1,24 @@
+- name: File ACLs for role groups
+  ansible.posix.acl:
+    path: "{{ item.path }}"
+    entity: "{{ item.group }}"
+    etype: group
+    permissions: "{{ item.perms }}"
+    default: "{{ item.default | default(false) }}"
+    recursive: "{{ item.recursive | default(false) }}"
+    state: present
+  loop: "{{ acl_rules }}"
+  loop_control:
+    label: "{{ item.group }} {{ item.perms }} {{ item.path }}{{ ' (default)' if item.default | default(false) else '' }}"
+
+- name: Sudoers drop-ins, validated by visudo
+  ansible.builtin.copy:
+    content: "{{ item.content }}"
+    dest: "/etc/sudoers.d/{{ item.name }}"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: visudo -cf %s
+  loop: "{{ sudoers }}"
+  loop_control:
+    label: "{{ item.name }}"

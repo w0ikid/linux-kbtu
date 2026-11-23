@@ -1,0 +1,23 @@
+- name: "[filesystem] stat layout"
+  ansible.builtin.stat:
+    path: "{{ item.path }}"
+  loop: "{{ fs_layout }}"
+  register: fs_stat
+
+- name: "[filesystem] owner, group and mode match"
+  ansible.builtin.assert:
+    that:
+      - item.stat.isdir
+      - item.stat.pw_name == item.item.owner
+      - item.stat.gr_name == item.item.group
+      - item.stat.mode == item.item.mode
+    quiet: true
+  loop: "{{ fs_stat.results }}"
+  loop_control:
+    label: "{{ item.item.path }}"
+
+- name: "[filesystem] service user has no login shell"
+  ansible.builtin.command: getent passwd {{ app_user }}
+  register: app_passwd
+  changed_when: false
+  failed_when: not app_passwd.stdout.endswith('/usr/sbin/nologin')

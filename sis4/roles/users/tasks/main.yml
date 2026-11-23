@@ -1,0 +1,14 @@
+- name: Role groups
+  ansible.builtin.group:
+    name: "{{ item }}"
+  loop: "{{ role_groups }}"
+
+- name: One user per role
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    groups: "{{ item.groups }}"
+    append: true
+    shell: /bin/bash
+  loop: "{{ role_users }}"
+  loop_control:
+    label: "{{ item.name }}"

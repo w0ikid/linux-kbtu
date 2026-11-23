@@ -1,0 +1,32 @@
+- name: Install packages from default apt repo
+  ansible.builtin.apt:
+    name: [htop, curl, ca-certificates, gnupg, acl, netcat-openbsd, ufw]
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Keyrings directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Add GitHub CLI signing key
+  ansible.builtin.get_url:
+    url: https://cli.github.com/packages/githubcli-archive-keyring.gpg
+    dest: /etc/apt/keyrings/githubcli-archive-keyring.gpg
+    mode: "0644"
+
+- name: Add GitHub CLI apt repo
+  ansible.builtin.apt_repository:
+    repo: "deb [arch={{ deb_arch }} signed-by=/etc/apt/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main"
+    filename: github-cli
+
+- name: Install gh from new repo
+  ansible.builtin.apt:
+    name: gh
+
+- name: Install yq as static binary (no package manager)
+  ansible.builtin.get_url:
+    url: "https://github.com/mikefarah/yq/releases/download/{{ yq_version }}/yq_linux_{{ deb_arch }}"
+    dest: /usr/local/bin/yq
+    mode: "0755"

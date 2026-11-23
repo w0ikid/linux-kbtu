@@ -1,0 +1,45 @@
+- name: Service account ids
+  ansible.builtin.getent:
+    database: passwd
+    key: "{{ app_user }}"
+
+- name: Service account may use docker
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    groups: docker
+    append: true
+
+- name: Compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: /opt/vikunja/docker-compose.yml
+    owner: "{{ app_user }}"
+    group: "{{ app_group }}"
+    mode: "0640"
+  vars:
+    app_uid: "{{ getent_passwd[app_user][1] }}"
+    app_gid: "{{ getent_passwd[app_user][2] }}"
+  notify: Restart vikunja
+
+- name: Pull images before the unit starts
+  ansible.builtin.command: docker compose -f /opt/vikunja/docker-compose.yml pull --policy missing
+  register: pull
+  changed_when: "'Pulled' in pull.stderr"
+
+- name: systemd unit
+  ansible.builtin.copy:
+    src: vikunja.service
+    dest: /etc/systemd/system/vikunja.service
+    mode: "0644"
+  notify: Restart vikunja
+
+# Restart (if notified) before the "started" task: on a fresh host the
+# handler would otherwise restart the stack in the middle of DB migrations.
+- name: Apply pending restarts now
+  ansible.builtin.meta: flush_handlers
+
+- name: Unit enabled at boot and started
+  ansible.builtin.systemd:
+    name: vikunja
+    enabled: true
+    state: started

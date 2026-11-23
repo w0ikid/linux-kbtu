@@ -1,0 +1,23 @@
+app_user: vikunja
+app_group: vikunja
+
+role_groups: [sysadmin, deploy, audit, automation, backup]
+role_users:
+  - { name: sysadmin1, groups: [sysadmin] }
+  - { name: devops1, groups: [deploy] }
+  - { name: auditor1, groups: [audit, adm, systemd-journal] }
+  - { name: automation_bot, groups: [automation] }
+  - { name: backup_op, groups: [backup] }
+
+ssh_allow_groups: [ubuntu, sysadmin, deploy, audit, automation, backup]
+
+yq_version: v4.44.3
+
+vikunja_image: vikunja/vikunja:2.6.0
+postgres_image: postgres:17-alpine
+vikunja_public_url: "https://{{ caddy_site }}"
+# Generated on the control node on first run and kept out of git.
+vikunja_db_password: "{{ lookup('password', playbook_dir ~ '/credentials/' ~ inventory_hostname ~ '_db chars=ascii_letters,digits length=32') }}"
+vikunja_jwt_secret: "{{ lookup('password', playbook_dir ~ '/credentials/' ~ inventory_hostname ~ '_jwt chars=hexdigits length=64') }}"
+
+firewall_ports: [22, 80, 443]

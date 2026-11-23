@@ -1,0 +1,15 @@
+- name: "[users] read memberships"
+  ansible.builtin.command: id -nG {{ item.name }}
+  loop: "{{ role_users }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: user_groups
+  changed_when: false
+
+- name: "[users] every user is in its role groups"
+  ansible.builtin.assert:
+    that: item.item.groups | difference(item.stdout.split()) | length == 0
+    quiet: true
+  loop: "{{ user_groups.results }}"
+  loop_control:
+    label: "{{ item.item.name }}"

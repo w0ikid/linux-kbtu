@@ -1,0 +1,17 @@
+- name: Authorized key for automation_bot
+  ansible.posix.authorized_key:
+    user: automation_bot
+    key: "{{ lookup('file', 'automation_bot.pub') }}"
+    exclusive: true
+
+- name: sshd hardening drop-in
+  ansible.builtin.copy:
+    dest: /etc/ssh/sshd_config.d/10-hardening.conf
+    content: |
+      PermitRootLogin no
+      PasswordAuthentication no
+      PubkeyAuthentication yes
+      AllowGroups {{ ssh_allow_groups | join(' ') }}
+    mode: "0644"
+    validate: sshd -t -f %s
+  notify: Reload ssh

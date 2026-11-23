@@ -1,0 +1,32 @@
+- name: "[permissions] whole sudoers config is valid"
+  ansible.builtin.command: visudo -c
+  changed_when: false
+
+- name: "[permissions] each role may run its command"
+  ansible.builtin.command: sudo -l -U {{ item.key }} {{ item.value }}
+  loop: "{{ sudo_expect | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  changed_when: false
+
+- name: "[permissions] devops1 may not run arbitrary commands"
+  ansible.builtin.command: sudo -l -U devops1 /usr/bin/apt-get
+  register: deny
+  changed_when: false
+  failed_when: deny.rc == 0
+
+- name: "[permissions] read ACLs"
+  ansible.builtin.command: getfacl -cp {{ item.path }}
+  loop: "{{ acl_rules | rejectattr('default', 'defined') }}"
+  loop_control:
+    label: "{{ item.path }}"
+  register: facl
+  changed_when: false
+
+- name: "[permissions] ACL entry exists"
+  ansible.builtin.assert:
+    that: ("group:" ~ item.item.group ~ ":") in item.stdout
+    quiet: true
+  loop: "{{ facl.results }}"
+  loop_control:
+    label: "{{ item.item.group }} on {{ item.item.path }}"

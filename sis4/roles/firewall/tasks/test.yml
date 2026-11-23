@@ -1,0 +1,12 @@
+- name: "[firewall] ufw status"
+  ansible.builtin.command: ufw status verbose
+  register: ufw
+  changed_when: false
+
+- name: "[firewall] active, deny incoming, only 22/80/443"
+  ansible.builtin.assert:
+    that:
+      - "'Status: active' in ufw.stdout"
+      - "'deny (incoming)' in ufw.stdout"
+      - ufw.stdout | regex_findall('^(\\d+)/tcp\\s+ALLOW IN', multiline=true) | map('int') | unique | sort == firewall_ports
+    quiet: true

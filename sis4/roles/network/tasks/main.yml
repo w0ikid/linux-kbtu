@@ -1,0 +1,17 @@
+- name: Collect network map
+  ansible.builtin.shell: |
+    echo "== interfaces =="; ip -brief addr
+    echo "== routes =="; ip route
+    echo "== listening ports =="; ss -tulpn | grep LISTEN
+  register: netmap
+  changed_when: false
+
+- name: Save network map on host
+  ansible.builtin.copy:
+    content: "{{ netmap.stdout }}\n"
+    dest: /var/log/network-map.txt
+    mode: "0640"
+
+- name: Show network map
+  ansible.builtin.debug:
+    var: netmap.stdout_lines

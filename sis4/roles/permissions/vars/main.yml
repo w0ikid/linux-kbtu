@@ -1,0 +1,46 @@
+acl_rules:
+  - { path: /opt/vikunja, group: deploy, perms: rwX, recursive: true }
+  - { path: /opt/vikunja, group: deploy, perms: rwX, recursive: true, default: true }
+  - { path: /var/backups/vikunja, group: backup, perms: rwx }
+  - { path: /var/backups/vikunja, group: backup, perms: rwx, default: true }
+  - { path: /var/lib/vikunja, group: backup, perms: rx }
+  - { path: /var/lib/vikunja/files, group: backup, perms: rx }
+  - { path: /var/log/vikunja, group: audit, perms: rx }
+  - { path: /var/log/vikunja/app.log, group: audit, perms: r }
+
+sudoers:
+  - name: 05-defaults
+    content: |
+      Defaults use_pty
+      Defaults logfile="/var/log/sudo.log"
+  - name: 10-sysadmin
+    content: |
+      %sysadmin ALL=(ALL) NOPASSWD: ALL
+  - name: 20-deploy
+    content: |
+      Cmnd_Alias VIKUNJA_SVC = /usr/bin/systemctl start vikunja.service, \
+                               /usr/bin/systemctl stop vikunja.service, \
+                               /usr/bin/systemctl restart vikunja.service, \
+                               /usr/bin/systemctl status vikunja.service
+      %deploy ALL=(root) NOPASSWD: VIKUNJA_SVC
+  - name: 30-audit
+    content: |
+      %audit ALL=(root) NOPASSWD: NOEXEC: /usr/bin/systemctl status *
+  - name: 40-automation
+    content: |
+      Cmnd_Alias DEPLOY_CMDS = /usr/bin/systemctl restart vikunja.service, \
+                               /usr/bin/systemctl status vikunja.service, \
+                               /usr/bin/docker compose -f /opt/vikunja/docker-compose.yml pull, \
+                               /usr/bin/docker compose -f /opt/vikunja/docker-compose.yml up -d
+      %automation ALL=(root) NOPASSWD: DEPLOY_CMDS
+  - name: 50-backup
+    content: |
+      %backup ALL=(root) NOPASSWD: /usr/bin/docker exec vikunja-db pg_dump -U vikunja vikunja
+
+# user -> command that sudo must allow (checked by smoke test)
+sudo_expect:
+  sysadmin1: /usr/bin/apt-get
+  devops1: /usr/bin/systemctl restart vikunja.service
+  auditor1: /usr/bin/systemctl status ssh
+  automation_bot: /usr/bin/docker compose -f /opt/vikunja/docker-compose.yml pull
+  backup_op: /usr/bin/docker exec vikunja-db pg_dump -U vikunja vikunja

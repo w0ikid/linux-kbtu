@@ -1,0 +1,18 @@
+- name: "[caddy] service active"
+  ansible.builtin.command: systemctl is-active caddy
+  changed_when: false
+
+- name: "[caddy] ports 80 and 443 listen"
+  ansible.builtin.wait_for:
+    port: "{{ item }}"
+    timeout: 10
+  loop: [80, 443]
+
+- name: "[caddy] HTTPS proxies to Vikunja"
+  ansible.builtin.uri:
+    url: "https://{{ caddy_site }}/api/v1/info"
+    validate_certs: "{{ caddy_site != 'localhost' }}"
+  register: proxied
+  retries: 6
+  delay: 5
+  until: proxied.status == 200

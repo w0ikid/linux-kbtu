@@ -1,0 +1,22 @@
+- name: "[ssh] effective sshd config"
+  ansible.builtin.command: sshd -T
+  register: sshd_t
+  changed_when: false
+
+- name: "[ssh] hardening is active"
+  ansible.builtin.assert:
+    that:
+      - "'permitrootlogin no' in sshd_t.stdout_lines"
+      - "'passwordauthentication no' in sshd_t.stdout_lines"
+      - "'pubkeyauthentication yes' in sshd_t.stdout_lines"
+      - ssh_allow_groups | map('regex_replace', '^', 'allowgroups ') | difference(sshd_t.stdout_lines) | length == 0
+    quiet: true
+
+- name: "[ssh] automation_bot key fingerprint"
+  ansible.builtin.command: ssh-keygen -lf /home/automation_bot/.ssh/authorized_keys
+  changed_when: false
+
+- name: "[ssh] port 22 listens"
+  ansible.builtin.wait_for:
+    port: 22
+    timeout: 5
