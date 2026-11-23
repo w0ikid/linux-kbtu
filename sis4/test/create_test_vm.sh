@@ -4,6 +4,13 @@
 # a full VM: same cloud image, its own systemd, network and SSH server.
 set -euo pipefail
 
+# Run as the normal user: under sudo $HOME is /root, so a different SSH key
+# would be put into the instance and Ansible could not log in.
+if [[ $EUID -eq 0 ]]; then
+    echo "Run without sudo: bash test/create_test_vm.sh (it calls sudo itself)" >&2
+    exit 1
+fi
+
 NAME=${1:-sis4-test}
 IMAGE=${IMAGE:-ubuntu:22.04}
 PUBKEY=${PUBKEY:-$HOME/.ssh/sis4_ansible.pub}
@@ -30,5 +37,10 @@ ssh_authorized_keys:
   - $(cat "$PUBKEY")"
 
 sudo lxc exec "$NAME" -- cloud-init status --wait >/dev/null
-IP=$(sudo lxc list "$NAME" -c 4 --format csv | awk '{print $1}')
-echo "$NAME ready at $IP"
+IP=$(sudo lxc list "$NAME" -c 4 --format csv | grep -oE '[0-9]+(\.[0-9]+){3} \(eth0\)' | cut -d' ' -f1)
+
+# Point the test inventory at the new address and forget the old host key.
+INV="$(dirname "$0")/../inventory/test.ini"
+sed -i "s/^$NAME ansible_host=[0-9.]*/$NAME ansible_host=$IP/" "$INV"
+ssh-keygen -R "$IP" >/dev/null 2>&1 || true
+echo "$NAME ready at $IP (inventory/test.ini updated)"
